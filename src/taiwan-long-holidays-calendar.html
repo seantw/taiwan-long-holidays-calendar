@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-tw">
+<head>
+  <meta charset="utf-8">
+  <title>台灣年曆</title>
+  <style>
+    body {
+      font-family: 'Noto Sans TC', 'Microsoft JhengHei', 'LiHei Pro Medium', sans-serif; // 黑體
+      position: relative;
+    }
+    
+    
+    #year {
+      display: block;
+      font-size: 1.5rem;
+      margin: 1em auto;
+      border: 0;
+      outline: 0;
+      margin-bottom: 0;
+      font-weight: bold;
+    }
+    
+    #calendar {
+
+      display: flex;
+      margin: 0 auto;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 2em;
+      
+      h1 {
+        font-size: 1.8rem;
+        width: 100%;
+        text-align: center;
+        margin: 0;
+      }
+    
+      h2 {
+        font-size: 1.1rem;
+        margin: .4rem auto;
+        text-align: center;
+        width: 100%;
+      }
+      section {
+      }
+
+      ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: .5em 0;
+      }
+      li {
+        display: block;
+        text-align: center;
+        width: 2.5em;
+        &.dayoff { /*放假日*/
+          color: red; 
+        }
+        &.long-weekend { /*連假*/
+          background-color: #FFEAE6;
+          
+        }
+
+        /*星期六日*/
+        &:nth-child(7n+1) { color: red; }
+        &:nth-child(7n+7) { color: red; }
+      }
+      
+      ul.weeks {
+        border-bottom: 1px dotted black;
+        box-sizing: border-box;
+        padding-bottom: .5em;
+        margin-bottom: .5em;
+      }
+      
+      ul.days>li {
+        &::after {
+          display: block;
+          content: attr(data-holiday);
+          font-size: .8rem;
+          width: 100%;
+        }
+      }
+    }
+    
+    .notes { text-align: right; margin: 1em; font-size: 9pt; color:#aaa; a { color:inherit; } }
+    
+    .download {
+      all: unset;
+      display: block;
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      right: 10px;
+      top: 10px;
+      overflow: hidden;
+      text-indent: -999px;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3'/%3E%3C/svg%3E") no-repeat;
+      cursor: pointer;
+      opacity: .3;
+      &:hover {
+        opacity: 1;
+      }
+    }
+    
+  </style>
+</head>
+<body>
+  
+<button class="download" title="下載 iCalendar 檔案&#013;(可匯入 Google 日曆)">匯出</button>
+
+
+<select id="year"></select>
+<div id="calendar"></div>
+
+<p class="notes">※ 此月曆以2025起增定之放假規則由程式自動按排。實際行況請依<a href="https://www.dgpa.gov.tw/informationlist?uid=30" target="_blank">政院人事行政總處</a>公佈為主。</p>
+
+
+
+
+
+<script type="text/javascript" src="./lib/taiwan-calendar.js"></script>
+<script type="text/javascript">
+
+'use strict';
+
+const cal = new TaiwanCalendar(); //預設今年
+
+const selYear = document.getElementById('year');
+const elCalendar = document.getElementById('calendar');
+
+for(let y=cal.year-1;y<=cal.year+20;y++) selYear.add(new Option(y,y));
+selYear.selectedIndex = 1;
+renderCalendar();
+
+selYear.addEventListener('change',renderCalendar);
+
+function renderCalendar(){
+
+  cal.year = selYear.value;
+  
+  //console.log(cal.year);
+  
+  const weekHead = '日一二三四五六'.split('').map(s=>`<li>${s}</li>`).join('');
+  
+  let html = `<h1>中華民國 ${cal.year-1911} 年</h1>`;
+  
+  for(let m=0;m<12;m++) {
+    
+    let days = [...cal.days[m]].map((v,i)=>{
+      
+      let aCls = [];
+      
+      if(/\*/.test(v)) { //放假紅字
+        aCls.push('dayoff');
+        v = v.replace(/\*/,'');
+      }
+      
+      if(/~/.test(v)) { //連假紅底
+        aCls.push('long-weekend');
+        v = v.replace(/\~/,'');
+      }      
+      return `<li data-day="${i+1}" data-holiday="${v}" class="${aCls.join(' ')}">${i+1}</li>`;
+    });
+
+    days.unshift(...new Array(new Date(cal.year,m,1).getDay()).fill('<li></li>')); //第一天星期幾空白
+    days.push(...new Array(7-(new Date(cal.year,m+1,1).getDay())).fill('<li></li>')); //下個月第一天星期幾空白
+    
+    html+=`<section data-moneh="${m+1}">
+    <h2>${m+1}月</h2>
+    <ul class="weeks">${weekHead}</ul>
+    <ul class="days">${days.join('')}</ul>
+    </section>`;
+  }
+  
+  elCalendar.innerHTML = html;
+  
+}
+
+document.querySelector('button.download').addEventListener('click',()=>{
+  
+  const D = n=>String(n+1).padStart(2,'0');
+  const year = cal.year;
+  
+  let events = [];
+
+  cal.days.forEach((month,m) => {
+    month.forEach((str,d) => {
+      let date = `${year}${D(m)}${D(d)}`;
+      const idxLast = events.length - 1;
+      const isOffDay = /[\*~]/.test(str);
+      const isOnVacation = idxLast<0?false:(events[idxLast][1] === null); //放假中
+      if(isOnVacation) { //連假中
+        if(isOffDay) {
+          events[idxLast][2] += str; //繼續放
+          return;
+        }
+        else { //收假
+          events[idxLast][1] = date;
+          return;
+        }
+      }
+      else { //非連假中
+        if(isOffDay) events.push([date,null,str]); 
+      }
+    });
+  });
+  
+  const transform = '元旦,春節,和平/二二八,清明節,勞動節,端午節,教師節,中秋節,國慶日,光復節,行憲/行憲紀念日'.split(/,/).map(s=>{
+    let a = s.split(/[/]/);
+    if(a.length===1) a.push(a[0]);
+    return a;
+  });
+
+  events = events.map(a=>{
+    a.push(a[2].replace(/[\*~]+$/,'').split(/[\*~]+/).length);
+    a[2] = a[2].replace(/^.+$/,$0=>{
+      let ret = $0;
+      for(const [s1,s2] of transform){
+        if($0.indexOf(s1)>-1) { ret = s2; break; } 
+      }
+      return ret;
+    });
+    return a;
+  });
+  
+  
+  events = events.map(a=>{
+    return `BEGIN:VEVENT
+DTSTART;VALUE=DATE:${a[0]}
+DTEND;VALUE=DATE:${a[1]}
+SUMMARY:${a[2]}${a[3]>1?`連假${a[3]}天`:''}
+TRANSP:TRANSPARENT
+END:VEVENT
+`;
+  });
+
+  const url = URL.createObjectURL(new Blob(['BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//台灣年曆//台灣放假日//ZH\n'+events.join('')+'END:VCALENDAR'], { type: 'text/calendar;charset=utf-8' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${year}-taiwan-calendar.ics`; 
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  
+});
+
+
+  
+</script>
+
+
+</body>
+</html>
