@@ -18,3 +18,6 @@ https://sean-web.web.app/taiwan-long-holidays-calendar.html
 ## 可匯入 Google 日曆
 ![截圖](images/screenshot2.png)
 
+
+## 參考資料
+香港天文台《[公曆與農曆日期對照表](https://www.hko.gov.hk/tc/gts/time/conversion1_text.htm)》
